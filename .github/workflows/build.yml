@@ -1,0 +1,47 @@
+name: Build Persian Calendar APK (custom widget)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'persian-calendar-widget-events.patch'
+      - '.github/workflows/build-persian-calendar-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out this helper repository
+        uses: actions/checkout@v4
+
+      - name: Check out Persian Calendar with submodules
+        run: git clone --depth 1 --recurse-submodules https://github.com/persian-calendar/persian-calendar.git upstream
+
+      - name: Apply monthly-widget customization
+        run: |
+          cd upstream
+          git apply --3way ../persian-calendar-widget-events.patch
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        working-directory: upstream
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PersianCalendar-custom-widget-debug-apk
+          path: upstream/PersianCalendar/build/outputs/apk/**/*.apk
+          if-no-files-found: error
